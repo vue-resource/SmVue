@@ -1,0 +1,24 @@
+{
+  "name": "smvue.js",
+  "version": "1.0.0",
+  "description": "a JavaScript MVVM library Similar to Vue",
+  "main": "dist/smvue.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vue-resource/SmVue.git"
+  },
+  "keywords": [
+    "MVVM",
+    "vue",
+    "smvue"
+  ],
+  "author": "henyulee",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vue-resource/SmVue/issues"
+  },
+  "homepage": "https://github.com/vue-resource/SmVue#readme"
+}
