@@ -5,6 +5,30 @@
 	<title>SmVue</title>
 </head>
 <body>
-	
+	<div id="app">
+		<!-- 用户姓名 -->
+		<input type="text" id="username">
+	</div>
+	<script src="./src/util.js"></script>
+	<script src="./src/watcher.js"></script>
+	<script src="./src/compiler.js"></script>
+	<script src="./src/smVue.js"></script>
+	<script>
+		var app = new SMVue({
+			data:{
+				user:"henyu"
+			},
+			computed:{
+				age:function() {
+					return this.user +"TMD";
+				}
+			},
+			methods:{
+				sayHello:function() {
+					alert("hello world");
+				}
+			}
+		});
+	</script>
 </body>
 </html>
