@@ -1,8 +1,8 @@
 /**
  * @author henyulee
  * @date   2018-03-29
- * @des   订阅系统
- *        订阅Observer的变更消息，获取最新值计算表达式，通过回调函数（updater函数）将计算结果更新到视图上
+ * @des   监听/发布系统
+ *        监听Observer的变更消息，获取最新值计算表达式，通过回调函数（updater函数）将计算结果更新到视图上
  */
 
 /**
@@ -37,11 +37,11 @@ Watcher.prototype = {
 	 * [update model => view ]
 	 * @return {[null]} [回调函数更新视图，实现 model => view ]
 	 */
-	update:function() {
+	update:function(options) {
 		var self = this;
 		var newVal = self.get();
 		if(!Tools.isEqual(self.value,newVal)){ //值发生了改变
-			self.callback && self.callback(newVal,self.value);
+			self.callback && self.callback(newVal,self.value,options);
 			self.value = Tools.deepCopy(newVal);
 		}
 	}

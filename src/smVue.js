@@ -19,6 +19,9 @@ SMVue.prototype = {
 		var self = this;
 		self._proxy();
 		self._proxyMethods();
+		
+		var ob = new Observer(this.$data);
+		if (!ob) return;
 		/**
 		 * 开始执行编译
 		 * @type {[Object]}
