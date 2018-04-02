@@ -5,6 +5,8 @@
  *        监听Observer的变更消息，获取最新值计算表达式，通过回调函数（updater函数）将计算结果更新到视图上
  */
 
+var $uid = 0;
+
 /**
  * [Watcher 订阅系统]
  * @param {[object]} opt [参数对象]
@@ -17,6 +19,7 @@ function Watcher(opt) {
 	this.txt = opt.txt;
 	this.callback = opt.cb || function() {};
 	this.value = null;
+	this.uid = $uid++;
 	this.update();
 }
 

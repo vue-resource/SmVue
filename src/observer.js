@@ -26,7 +26,7 @@ Observer.prototype = {
 		});
 	},
 	/**
-	 * [observeObject 监听单元]
+	 * [observeObject 监听单元,劫持Obect的getter、setter实现]
 	 * @param  {[object]} obj [监听的数据]
 	 * @param  {[string]} key [要监听的数据节点]
 	 * @param  {[未知]} val [数据节点原始值]
@@ -103,7 +103,7 @@ Observer.prototype = {
 						case 'unshift':
 							interate = args;break;
 						case 'splice':
-							interate = args.slice(2);//只要那些插入到数组中的成员 
+							interate = args.slice(2);break;//只要那些插入到数组中的成员 
 					}
 					if(interate && interate.length > 0){
 						self.observeArray(interate,dep);

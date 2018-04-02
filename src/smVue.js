@@ -4,6 +4,8 @@
  * @des   框架主体
  *        @子模块  data/method/computed
  *        @待加入  component/props
+ * @ref-source  参考链接
+ * 		https://github.com/qieguo2016/Vueuv
  */
 
 function SMVue(options) {
@@ -19,8 +21,8 @@ SMVue.prototype = {
 		var self = this;
 		self._proxy();
 		self._proxyMethods();
-		
-		var ob = new Observer(this.$data);
+
+		var ob = new Observer(self.$data);
 		if (!ob) return;
 		/**
 		 * 开始执行编译

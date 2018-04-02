@@ -6,8 +6,31 @@
 </head>
 <body>
 	<div id="app">
-		用户姓名
-		<input type="text" id="username">{{user}}
+		用户姓名：<input type="text" id="username" v-model="user">
+		<hr>
+		<div>{{user}}</div>
+		<hr/>
+		<div>
+			<input type="checkbox" name="animal" v-model="animal" value="1"> 猫
+			<input type="checkbox" name="animal" v-model="animal" value="2"> 狗
+			<input type="checkbox" name="animal" v-model="animal" value="3"> 兔子
+			<input type="checkbox" name="animal" v-model="animal" value="4"> 老鼠
+			<input type="checkbox" name="animal" v-model="animal" value="5"> 家巧
+		</div>
+		
+		<div v-show="animal.length > 3">
+			<hr>
+			当选中的动物种类大于3个时我才显示……
+			<hr>
+		</div>
+		
+		<div>
+			<input type="radio" name="sex" v-model="sex" value="0"> 男 <input type="radio" v-model="sex" name="sex" value="1"> 女
+			<div v-if="sex === '1'">
+				<span>我是女汉子…… </span>
+			</div>
+		</div>
+		<span v-html="gogo"></span>
 	</div>
 	<script src="./src/util.js"></script>
 	<script src="./src/dependence.js"></script>
@@ -17,12 +40,15 @@
 	<script src="./src/smVue.js"></script>
 	<script>
 		var app = new SMVue({
+			el:"#app",
 			data:{
-				user:"henyu"
+				user:"henyu",
+				sex:"1",
+				animal:["2","3"]
 			},
 			computed:{
-				age:function() {
-					return this.user +"TMD";
+				gogo:function() {
+					return '<span style="color:#ff3333;">'+this.user+'</span>';
 				}
 			},
 			methods:{

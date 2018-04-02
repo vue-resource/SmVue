@@ -6,18 +6,19 @@
  */
 
 function Dep() {
-	this.subs = [];
+	this.subs = {};
 }
 
 Dep.prototype = {
 	constructor:Dep,
 	addSub:function(target) {
-		this.subs.push(target);
+		if (!this.subs[target.uid]) {  //防止重复添加
+			this.subs[target.uid] = target;
+		}
 	},
 	notify:function(options) {
-		var self = this;
-		self.subs.forEach(function(sub) {
-			sub.update(options);
-		});
+		for (var uid in this.subs) {
+			this.subs[uid].update(options);
+		}
 	}
 }

@@ -5,6 +5,9 @@
  *        指令/文本节点/事件
  *        @待完成 组件
  */
+
+var $$id = 0;
+
 function Complier(opt) {
 	this.$el = opt.el; //view
 	this.vm = opt.vm; //model
@@ -15,7 +18,7 @@ Complier.prototype = {
 	init:function() {
 		var self = this;
 		self.frag = self.nodeToFragment();
-		this.compile(self.frag);
+		self.compile(self.frag);
 		self.$el.appendChild(self.frag);
 	},
 	/**
@@ -41,13 +44,14 @@ Complier.prototype = {
 	 */
 	compile:function(node) {
 		var self = this;
+		node.$id = $$id++;
 		if(node.childNodes && node.childNodes.length > 0) {
 			//把DOM节点转化为 【类数组】
-			[].slice.call(node.childNodes).forEach(function(node) {
-				if(node.nodeType === 1){//元素节点
-					self.compileElementNode(node);
-				}else if(node.nodeType === 3) {// 文本节点
-					self.compileTextNode(node);
+			[].slice.call(node.childNodes).forEach(function(childNode) {
+				if(childNode.nodeType === 1){//元素节点
+					self.compileElementNode(childNode);
+				}else if(childNode.nodeType === 3) {// 文本节点
+					self.compileTextNode(childNode);
 				}
 			});
 		}
@@ -62,16 +66,19 @@ Complier.prototype = {
 		var attrlist = [].slice.call(node.attributes); //attributes是动态的，要复制到数组里面去遍历
 		attrlist.forEach(function(attr) {
 			var dir = self.checkDirective(attr.name);
-			if(dir.type === "for" || dir.type === "if"){
-				lazyCompileDir = dir.type;
-				lazyCompileExp = attr.value;
-			}else if(dir.type !== undefined){
-				var hanlder = self[dir.type+"Handler"].bind(self);
-				if(hanlder){
-					hanlder(node,attr.value,dir.prop); 
-				}else{
-					console.error('找不到' + dir.type + '指令');
+			if(dir.type) {
+				if(dir.type === "for" || dir.type === "if"){
+					lazyCompileDir = dir.type;
+					lazyCompileExp = attr.value;
+				}else {
+					var hanlder = self[dir.type+"Handler"].bind(self);
+					if(hanlder){
+						hanlder(node,attr.value,dir.prop); 
+					}else{
+						console.error('找不到' + dir.type + '指令');
+					}
 				}
+				node.removeAttribute(attr.name);
 			}
 		});
 		// if/for懒编译（编译完其他指令后才编译）
@@ -98,7 +105,7 @@ Complier.prototype = {
 	 * @return {[null]} [v-text="expression"]
 	 */
 	textHandler:function(node,txt) {
-		self.bindWatcher({node:node,txt:txt,direct:"text"});
+		this.bindWatcher({node:node,txt:txt,direct:"text"});
 	},
 	/**
 	 * [htmlHandler v-html]
@@ -109,7 +116,7 @@ Complier.prototype = {
 	htmlHandler:function(node,txt) {
 		var self = this;
 		var updateFn = (self.updater())["html"];
-		var watcher = new Watcher({scope:self,txt:txt,cb:function(newVal) {
+		var watcher = new Watcher({scope:self.vm,txt:txt,cb:function(newVal) {
 			updateFn && updateFn(node, newVal);
 			self.compile(node);
 		}});
@@ -179,19 +186,55 @@ Complier.prototype = {
 	 * */
 
 	modelHandler:function(node,txt,prop) {
-	 	//if(node.tagName.toLowercase() === "input") {
-	 	//	switch(node.type) {
-	 	//		case "checkbox":
-	 	//			this.bindWatcher({node:node,txt:txt,direct:"checkbox"});
-//
-	 	//			break;
-	 	//		case "radio":
-	 	//			break;
-	 	//		case "file":
-	 	//			break;
-	 	//		default:
-	 	//	}
-	 	//}
+		var tagname = node.tagName.toLowerCase();
+		var tagType = node.type;
+		var self = this;
+	 	if(tagname === "input"){
+	 		switch(tagType) {
+	 			case "checkbox":
+	 				self.bindWatcher({node:node,txt:txt,direct:"checkbox"});
+		 			node.addEventListener("change",function(e) {
+		 				var value = e.target.value;
+		 				var index = self.vm[txt].indexOf(value);
+		 				if(e.target.checked && index < 0) {
+		 					self.vm[txt].push(value);
+		 				}else if(!e.target.checked && index > -1){
+		 					self.vm[txt].splice(index,1);
+		 				}
+		 			});
+	 				break;
+	 			case "radio":
+	 				self.bindWatcher({node:node,txt:txt,direct:"radio"});
+	 				node.addEventListener("change",function(e) {
+	 					if(e.target.checked) {
+	 						var _exp = txt +"='"+e.target.value +"'";
+	 						with(self.vm) {
+	 							eval(_exp);
+	 						} 
+	 					}
+	 				});
+	 				break;
+	 			case 'file':
+					self.bindWatcher({node:node,txt:txt,direct:'value'});
+					node.addEventListener('change', function (e) {
+						var _exp = txt + '=`' + e.target.value + '`';
+						with (self.vm) {
+							eval(_exp);
+						}
+					});
+					break;
+	 			default:
+		 			self.bindWatcher({node:node,txt:txt,direct:"value"});
+		 			node.addEventListener("input",function(e) {
+		 				// 由于上面绑定了自动更新，循环依赖了，中文输入法不能用。这里加入一个标志避开自动update
+		 				node.isInputting = true;
+		 				var _exp = txt +"='"+e.target.value +"'"; //赞赞赞
+		 				with(self.vm) {
+		 					eval(_exp);
+		 				}
+		 			});
+	 		}
+	 	}
 	},
 	/**
 	 * [showHandler v-show]
@@ -249,10 +292,11 @@ Complier.prototype = {
 	 * @return {[null]}        [监听处理]
 	 */
 	bindWatcher:function(opt) {
+		//添加一个Watcher，监听exp相关的所有字段变化
 		var self = this;
 		var updateSet = self.updater();
 		var updateFn = updateSet[opt.direct]; //绑定节点对应的视图处理函数
-		var watcher = new Watcher({scope:self,txt:opt.txt,cb:function(newVal) {
+		var watcher = new Watcher({scope:self.vm,txt:opt.txt,cb:function(newVal) {
 			updateFn && updateFn(opt.node, newVal, opt.prop);
 		}});
 	},
@@ -355,12 +399,15 @@ Complier.prototype = {
 				var parse = name.substring(2).split(":");
 				dir.type = parse[0];
 				dir.prop = parse[1];
+				break;
 			case name.indexOf('@') === 0 :
 				dir.type = "on";
 				dir.prop = name.substring(1);
+				break;
 			case name.indexOf(':') === 0 :
 				dir.type = "bind";
 				dir.prop = name.substring(1);
+				break;
 		}
 		return dir;
 	},
@@ -384,14 +431,17 @@ Complier.prototype = {
 				var value = node.value;
 				node.checked = newVal.indexOf(value) > -1;
 			},
+			radio:function(node,newVal) {
+				node.checked = node.value === newVal;
+			},
 			attr:function(node,newVal,attrName) {
 				node.setAttribute(attrName, newVal ||"");
 			},
 			style: function (node, newVal, attrName) {
 				if (attrName === 'display') {
-					newVal = newVal ? 'initial' : 'none';
+					var isShow = newVal ? 'initial' : 'none';
 				}
-				node.style[attrName] = newVal;
+				node.style[attrName] = isShow;
 			},
 			dom: function (node, newVal, nextNode) {
 				if (newVal) {
