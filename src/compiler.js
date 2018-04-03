@@ -10,7 +10,7 @@ var $$id = 0;
 
 function Complier(opt) {
 	this.$el = opt.el; //view
-	this.vm = opt.vm; //model
+	this.now = opt.vm; //model
 	this.init(); 
 }
 Complier.prototype = {
@@ -42,8 +42,9 @@ Complier.prototype = {
 	 * [编译文档片段]
 	 * @return {[null]} [在这里对元素，指令，属性，文本节点执行编译]
 	 */
-	compile:function(node) {
+	compile:function(node,scope) {
 		var self = this;
+		self.vm = scope || self.now;
 		node.$id = $$id++;
 		if(node.childNodes && node.childNodes.length > 0) {
 			//把DOM节点转化为 【类数组】
@@ -135,7 +136,7 @@ Complier.prototype = {
 	 	if(!event) {console.error("请指定事件类型！");return;}
 	 	var fn = self.vm[txt];
 	 	if(typeof fn === "function"){
-	 		node.addEventListener(event,fn.bind(self))// bind生成一个绑定this的新函数，而call和apply只是调用
+	 		node.addEventListener(event,fn.bind(self)); // bind生成一个绑定this的新函数，而call和apply只是调用
 	 	}else {
 	 		node.addEventListener(event,function() {
 	 			Tools.computeExpression(txt,self.vm);
@@ -156,14 +157,14 @@ Complier.prototype = {
 	 	switch (attr) {
 			case 'class':
 				// 拼成 "baseCls "+(a?"acls ":"")+(b?"bcls ":"")的形式
-				txt = '"' + node.className + ' "+' + self.parseClassExp(txt);
+				txt = '"' + (node.className || '') + ' "+' + self.parseClassExp(txt);
 				break;
 			case 'style':
 				// style可以使用style.cssText/node.setAttribute('style','your style')全量更新，也可以使用style.prop单个更新
 				// 全量更新只需要监听全量表达式即可，但是初次编译之后其他地方脚本改了propB的话，下一次更新propA也会使用vm的值去覆盖更改后的propB
 				// 单个更新的话需要监听多个值，但是不同样式之间无影响，比如初次编译后脚本更改了propC，下一次更新propB是不会影响到propC的
 				// 这里使用全量更新，样式写法是这样的：<div v-bind:style="{ color: activeColor, font-size: fontSize }"></div>
-				var styleStr = node.getAttribute('style');
+				var styleStr = node.getAttribute('style') || '';
 				txt = '"' + styleStr + ';"+' + self.parseStyleExp(txt);
 				break;
 		}
@@ -251,7 +252,7 @@ Complier.prototype = {
 	 * @param  {[string]} txt  [description]
 	 * @return {[null]}      [无]
 	 */
-	ifHandler:function(node,txt) {
+	ifHandler:function(node,txt) { // TODO
 		// 先编译子元素，然后根据表达式决定是否插入dom中
 		// PS：这里需要先插入一个占位元素来定位，不能依赖其他元素，万一其他元素没了呢？
 		this.compile(node);
@@ -268,7 +269,36 @@ Complier.prototype = {
 	 * @return {[null]}      [无]
 	 */
 	forHandler:function(node,txt) {
-		// TODO 
+		var self = this;
+		var scope = self.vm;
+		var item = txt.split("in")[0].replace(/\s/g,'');
+		var arr = txt.split("in")[1].replace(/\s/g,'');
+		var parentNode = node.parentNode;
+		var startNode = document.createTextNode('');
+		var endNode = document.createTextNode('');
+		var range = document.createRange();
+		parentNode.replaceChild(startNode,node);
+		parentNode.appendChild(endNode);
+		var watcher = new Watcher({scope:scope,txt:arr,cb:function(newArr,oldArr,options) {
+			range.setStart(startNode,0);
+			range.setEnd(endNode,0);
+			range.deleteContents();
+			newArr.forEach(function(val,key) {
+				var cloneNode = node.cloneNode(true);
+				parentNode.insertBefore(cloneNode,endNode);
+				// for循环内作用域绑定在当前作用域之下，注意每次循环要生成一个新对象
+				var _scope = Object.create(scope);
+				if(item.indexOf("(") > -1){
+					var _arr = item.replace(/[\(\)]/g,'').split(",");
+					_scope[_arr[0]] = key;
+					_scope[_arr[1]] = val;
+				}else {
+					_scope.$index = key;// 增加$index下标
+					_scope[item] = val; // 绑定item作用域
+				}
+				self.compile(cloneNode,_scope);  // TODO @FIXME 同样的编译应该有缓存机制
+			});
+		}});
 	},
 
 	/**
@@ -327,15 +357,16 @@ Complier.prototype = {
 	parseClassExp:function(txt) {
 		// 拼成 (a?"acls ":"")+(b?"bcls ":"")的形式
 		if (!txt) { return; }
-		var regObj = /\{(.+?)\}/g;  // :class={"classA":true,"classB":5>3}
-		var regArr = /\[(.+?)\]/g; // :class = ["a","b",5>3?"c":""]
+		var regObj = /^\{(.+?)\}$/;  // :class={"classA":true,"classB":5>3}
+		var regArr = /^\[(.+?)\]$/; // :class = ["a","b",5>3?"c":""]
 		var result = [];
 		if (regObj.test(txt)) {
 			var subExp = txt.replace(/[\s\{\}]/g, '').split(',');
 			subExp.forEach(function (sub) {
-				var key = '"' + sub.split(':')[0].replace(/['"`]/g, '') + ' "';
-				var value = sub.split(':')[1];
-				result.push('((' + value + ')?' + key + ':"")')
+				var idx = sub.indexOf(":");
+				var key = '"' + sub.substr(0,idx).replace(/['"`]/g, '') + ' "';
+				var value = sub.substr(idx+1);
+				result.push('((' + value + ')?' + key + ':"")');
 			});
 		} else if (regArr.test(txt)) {
 			var subExp = txt.replace(/[\s\[\]]/g, '').split(',');
@@ -343,7 +374,7 @@ Complier.prototype = {
 				return '(' + sub + ')' + '+" "';
 			});
 		}else {
-			result.push(txt);
+			return '(' +txt +')';
 		}
 		return result.join('+');  // 拼成 (a?"acls ":"")+(b?"bcls ":"")的形式
 	},
@@ -354,21 +385,29 @@ Complier.prototype = {
 	 */
 	parseStyleExp:function(txt) {
 		if (!txt) { return; }
-		var regObj = /\{(.+?)\}/g; // :style={'width':100,'height':200}
-		var regArr = /\[(.+?)\]/g; // :style=[{'width':100,'height':200},{'top':30},{'backgroundColor':"#fff"}]
+		var self = this;
+		var regObj = /^\{(.+?)\}$/; // :style={'width':100,'height':200}
+		var regArr = /^\[(.+?)\]$/; // :style=[{'width':100,'height':200},{'top':30},{'backgroundColor':"#fff"}]
 		var result = [];
 		if (regObj.test(txt)) {
 			var subExp = txt.replace(/[\s\{\}]/g, '').split(',');
 			subExp.forEach(function (sub) {
-				var key = '"' + sub.split(':')[0].replace(/['"`]/g, '') + ':"+';
-				var value = sub.split(':')[1];
+				var idx = sub.indexOf(":");
+				var key = '"' + sub.substr(0,idx).replace(/['"`]/g, '') + ':"+';
+				var value = '(' +sub.substr(idx+1).replace(/['`]/g, '"') +')';
 				result.push(key + value + '+";"');
 			});
-		} else if (regArr.test(exp)) {
-			var subExp = exp.replace(/[\s\[\]]/g, '').split(','); //感觉实现起来有误 是不是应该 /[\s\[\{\]\}]/g
+		} else if (regArr.test(txt)) {
+			var subExp = txt.replace(/[\s\[\{\]\}]/g, '').split(','); //感觉实现起来有误 是不是应该 /[\s\[\{\]\}]/g
 			result = subExp.map(function (sub) {
-				return '(' + sub + ')' + '+";"';
+				//return '(' + sub + ')' + '+";"';
+				var idx = sub.indexOf(":");
+				var key = '"' + sub.substr(0,idx).replace(/['"`]/g, '') + ':"+';
+				var value = '(' +sub.substr(idx+1).replace(/['`]/g, '"') +')';
+				return key + value + '+";"';
 			});
+		}else {
+			return '(' +txt +')'; // 
 		}
 		return result.join('+');  // 拼成 (width:100;)+(height:5>3?200:100;)的形式
 	},

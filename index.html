@@ -3,12 +3,69 @@
 <head>
 	<meta charset="UTF-8">
 	<title>SmVue</title>
+	<style>
+		*{
+			margin:0;
+			padding:0;
+			cursor: pointer;
+		}
+		div {
+			 padding: 20px;
+		}
+		input[type=text] {
+			border:1px solid #ddd;
+			-webkit-appearance:none;
+			outline: none;
+			width:200px;
+			height:30px;
+			line-height: 30px;
+			text-indent: .5em;
+		}
+		input[type=text]:focus {
+			border-color: #4574cc;
+		}
+		input[type=radio],input[type=checkbox] {
+			margin-left: 20px;
+		}
+
+		.bg-info {
+			background-color: #4574cc;
+		}
+		.bg-warning {
+			background-color: #fd9d08;
+		}
+		.bg-danger {
+			background-color: #e60c14;	
+		}
+		.bg-success {
+			background-color: #04bb0b;
+		}
+		.font-fff {
+			color:#fff;
+		}
+		.font-info {
+			color:#4574cc;
+			margin-left: 20px;
+		}
+		.btn {
+			display: inline-block;
+			padding:5px 10px;
+			border-radius: 5px;
+			color:#fff;
+		}
+		.btn-info {
+			background-color: #4574cc;
+		}
+		.btn-success {
+			background-color: #04bb0b;
+		}
+	</style>
 </head>
 <body>
 	<div id="app">
-		用户姓名：<input type="text" id="username" v-model="user">
+		<div>用户姓名：<input type="text" id="username" v-model="user"></div>
 		<hr>
-		<div>{{user}}</div>
+		<div :class="{'bg-info':animal.length === 1,'bg-warning':animal.length === 2,'bg-danger':animal.length === 3,'bg-success':animal.length === 4}">{{user}}</div>
 		<hr/>
 		<div>
 			<input type="checkbox" name="animal" v-model="animal" value="1"> 猫
@@ -18,19 +75,33 @@
 			<input type="checkbox" name="animal" v-model="animal" value="5"> 家巧
 		</div>
 		
-		<div v-show="animal.length > 3">
-			<hr>
+		<div v-show="animal.length > 3" :class="['font-fff',animal.length>3?'bg-success':'']">
 			当选中的动物种类大于3个时我才显示……
-			<hr>
 		</div>
-		
+		<div v-show="animal.length > 3" :class="class">
+			当选中的动物种类大于3个时我才显示……
+		</div>
 		<div>
 			<input type="radio" name="sex" v-model="sex" value="0"> 男 <input type="radio" v-model="sex" name="sex" value="1"> 女
 			<div v-if="sex === '1'">
 				<span>我是女汉子…… </span>
 			</div>
 		</div>
+		<hr>
 		<span v-html="gogo"></span>
+		<div :style="{'height':'100px','background-color':animal.length>3?'#04bb0b':'#fd9d08'}" style="color:#f33;line-height:2">
+			测试style:{}
+		</div>
+		<div :style="[{'position':'relative','left':'20px'},{'top':'10px','background-color':bgSuccess}]">
+			测试style:[]
+		</div>
+		<div style="margin-top:20px;">
+			<span class="btn btn-info" @click="sayHello">@click</span>
+			<span class="btn btn-success" v-on:click="slide"> v-on:click</span>
+		</div>
+		<div>
+			<span class="font-info"  v-for="(i,val) in hobby" :value="i">{{val}}-{{i}}</span>
+		</div>
 	</div>
 	<script src="./src/util.js"></script>
 	<script src="./src/dependence.js"></script>
@@ -44,16 +115,24 @@
 			data:{
 				user:"henyu",
 				sex:"1",
-				animal:["2","3"]
+				animal:["2","3"],
+				bgSuccess :"#04bb0b",
+				hobby:["上网","旅游","打篮球","看电影"]
 			},
 			computed:{
 				gogo:function() {
 					return '<span style="color:#ff3333;">'+this.user+'</span>';
+				},
+				class:function() {
+					return 'bg-success';
 				}
 			},
 			methods:{
 				sayHello:function() {
 					alert("hello world");
+				},
+				slide:function() {
+					this.vm.animal = [];
 				}
 			}
 		});
